@@ -130,6 +130,35 @@ STOPPING: a slot was found but not successfully booked. ...
 book it manually right now before it's gone: https://limassoldistrictadmin.simplybook.it/v2/#book/service/8/count/1/provider/10/date/2026-XX-XX/
 ```
 
+## 7. Deploying on Railway (recommended for unattended running)
+
+This bot is a long-running process (`node-cron` scheduler + Playwright), so it
+needs a real host, not a serverless platform — [Railway](https://railway.app)
+works well and keeps a persistent volume for `state.json`.
+
+1. **Push this repo to GitHub**, then in Railway: New Project → Deploy from
+   GitHub repo. Railway will pick up the `Dockerfile` / `railway.json` in
+   this project automatically (Docker builder, no HTTP port needed — it's a
+   worker, not a web service).
+2. **Set environment variables** (Settings → Variables) — since
+   `config.local.js` is gitignored and never reaches the server, use these
+   instead:
+   - `CLIENT_NAME`, `CLIENT_EMAIL`, `CLIENT_PHONE` — your real details.
+   - `TARGET_DATE` — optional, `YYYY-MM-DD` to pin the watched date; leave
+     unset to use `targetDaysAhead` (computed once, then persisted).
+3. **Attach a Volume** (Settings → Volumes → New Volume, mount path e.g.
+   `/data`). Railway sets `RAILWAY_VOLUME_MOUNT_PATH` automatically, and
+   `config.js` uses it for `state.json` / `bot.log` / `screenshots/` so they
+   survive redeploys. Without a volume, those reset on every deploy — you'd
+   lose the "already booked" / pinned `targetDate` state.
+4. **Deploy.** Check the Railway service logs — you should see the same
+   startup lines as `npm start` locally. First deploy takes a few minutes
+   longer since `npx playwright install --with-deps chromium` downloads the
+   browser during the Docker build.
+5. To watch the bot actually book something, either read the logs, or use
+   Railway's shell (`railway run` / the web shell) to inspect
+   `/data/state.json` and `/data/screenshots/`.
+
 ## Files
 
 | File | Purpose |

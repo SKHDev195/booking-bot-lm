@@ -16,6 +16,26 @@ try {
   // placeholder client below (see run-once.js), so this is safe.
 }
 
+const path = require("path");
+
+// On hosts like Railway, config.local.js (gitignored, holds PII) can't be
+// copied onto the box, so fall back to environment variables. Precedence:
+// config.local.js > env vars > invalid placeholders (which make the bot
+// refuse to run).
+const envClient =
+  process.env.CLIENT_NAME && process.env.CLIENT_EMAIL && process.env.CLIENT_PHONE
+    ? {
+        name: process.env.CLIENT_NAME,
+        email: process.env.CLIENT_EMAIL,
+        phone: process.env.CLIENT_PHONE,
+      }
+    : null;
+
+// If a Railway Volume is attached, RAILWAY_VOLUME_MOUNT_PATH is set
+// automatically and state/log/screenshots persist there across deploys.
+// Locally (no volume) this stays "." so behaviour is unchanged.
+const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || ".";
+
 module.exports = {
   // The company/widget details, taken from the URL you gave me:
   // https://limassoldistrictadmin.simplybook.it/v2/#book/service/8/count/1/provider/10/date/2026-10-01/
@@ -32,7 +52,7 @@ module.exports = {
   // The person the appointment is for. Real values come from config.local.js;
   // these placeholders are intentionally invalid so the bot won't submit a
   // booking with dummy details.
-  client: local.client || {
+  client: local.client || envClient || {
     name: "YOUR NAME",
     email: "you@example.com",
     phone: "+3579XXXXXXX",
@@ -47,7 +67,7 @@ module.exports = {
   // persists it in stateFile (as targetDate). Note: deleting state.json makes
   // that computed value recompute against a new "today", so pin `targetDate`
   // in config.local.js if you want a stable date.
-  targetDate: local.targetDate || null,
+  targetDate: local.targetDate || process.env.TARGET_DATE || null,
   targetDaysAhead: 61,
 
   // Schedule: every 30 minutes, 08:00-18:30, Nicosia time, every day.
@@ -56,10 +76,12 @@ module.exports = {
   cronSchedule: "0,30 8-18 * * *",
   timezone: "Asia/Nicosia",
 
-  // Files used to persist state between runs.
-  stateFile: "./state.json",
-  logFile: "./bot.log",
-  screenshotDir: "./screenshots",
+  // Files used to persist state between runs. Under a Railway Volume
+  // (dataDir set via RAILWAY_VOLUME_MOUNT_PATH) these live on that volume
+  // so they survive redeploys; locally they stay in the project folder.
+  stateFile: path.join(dataDir, "state.json"),
+  logFile: path.join(dataDir, "bot.log"),
+  screenshotDir: path.join(dataDir, "screenshots"),
 
   // Playwright behaviour
   browser: {
