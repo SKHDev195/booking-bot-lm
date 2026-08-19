@@ -70,10 +70,19 @@ module.exports = {
   targetDate: local.targetDate || process.env.TARGET_DATE || null,
   targetDaysAhead: 61,
 
-  // Schedule: every 30 minutes, 08:00-18:30, Nicosia time, every day.
-  // (Cron minute/hour fields; node-cron uses standard 5-field cron syntax.)
-  // "0,30 8-18" fires at :00 and :30 for hours 08..18, so the last run is 18:30.
-  cronSchedule: "0,30 8-18 * * *",
+  // Active window: no requests at all outside these hours (Nicosia time).
+  // activeHourEnd is inclusive and paired with a :30 mark, so the last burst
+  // of the day starts at activeHourEnd:30 (18:30 by default).
+  activeHourStart: 8,
+  activeHourEnd: 18,
+
+  // After each clean 30-minute mark (:00 / :30) inside the active window,
+  // re-check every `burstIntervalSeconds` for `burstWindowMinutes` — a fresh
+  // slot is most likely to appear right at the mark, so this catches it fast
+  // without polling continuously for the whole 30 minutes.
+  burstIntervalSeconds: 20,
+  burstWindowMinutes: 2,
+
   timezone: "Asia/Nicosia",
 
   // Files used to persist state between runs. Under a Railway Volume

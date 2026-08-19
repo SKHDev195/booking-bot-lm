@@ -7,9 +7,11 @@ and automatically books **the first available slot on one fixed date**. That
 date is either pinned explicitly (`targetDate` in `config.local.js`) or, if
 left unset, computed once as **`targetDaysAhead` days ahead of when the bot
 first ran** (currently 61, see `config.js`) and then persisted. The
-bot does not shop around other dates — it keeps rechecking that single date
-every 30 minutes, 08:00–18:00 Nicosia time, every day, until a slot is
-successfully booked.
+bot does not shop around other dates — it keeps rechecking that single date,
+08:00–18:30 Nicosia time, every day, until a slot is successfully booked. No
+requests are made 00:00–08:00. Inside the active window it checks in bursts:
+every `burstIntervalSeconds` (20s) for `burstWindowMinutes` (2min) right after
+each clean 30-minute mark (:00 / :30), then goes quiet until the next mark.
 
 ## ⚠️ Please read before running
 
@@ -37,8 +39,8 @@ Two things worth knowing:
 **Run the test in headed mode first** (see below) so you can watch it and
 confirm it correctly finds/clicks slots and fills the form, *before* you let
 it run unattended and actually submit a real booking. Please also keep the
-30-minute check interval as configured, so this doesn't look like abusive
-traffic to the site.
+burst schedule (`burstIntervalSeconds` / `burstWindowMinutes` in `config.js`)
+reasonable, so this doesn't look like abusive traffic to the site.
 
 ## 1. Install
 
@@ -95,9 +97,10 @@ match that in the code.
 npm start
 ```
 
-This runs an immediate check, then follows the cron schedule
-(`0,30 8-18 * * *`, Asia/Nicosia timezone — i.e. :00 and :30 past the hour,
-08:00 through 18:30, every day). Leave this process running.
+This runs an immediate check (if it's within the active window and burst
+period), then follows the schedule in `config.js`: active 08:00–18:30
+Asia/Nicosia, checking every 20s for 2 minutes after each clean :00/:30 mark,
+silent 00:00–08:00 and between marks. Leave this process running.
 
 To keep it running in the background reliably (so it survives you closing
 the terminal, and restarts if your machine reboots), consider:
@@ -179,7 +182,8 @@ works well and keeps a persistent volume for `state.json`.
 - Watched date: a single fixed date — `targetDate` in `config.local.js` if set,
   otherwise `today + targetDaysAhead` (61) computed once on first run. The bot
   does **not** scan a range of dates or apply a weekday filter.
-- Check schedule: every 30 min, 08:00–18:30, Asia/Nicosia timezone
+- Check schedule: active 08:00–18:30 Asia/Nicosia, every 20s for 2min after
+  each clean 30-min mark (silent 00:00–08:00 and between marks)
 - No separate email alert (relying on the booking system's own confirmation email)
 
 > ⚠️ Earlier versions of this project committed the client's name/email/phone
