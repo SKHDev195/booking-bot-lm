@@ -1,0 +1,5 @@
+node_modules/
+config.local.js
+state.json
+bot.log
+screenshots/

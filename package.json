@@ -1,0 +1,17 @@
+{
+  "name": "limassol-booking-bot",
+  "version": "1.0.0",
+  "description": "Watches the Limassol District Administration SimplyBook.it booking widget and auto-books the earliest available slot from a target date onward.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "install-browsers": "playwright install chromium",
+    "test-once": "node run-once.js --headed",
+    "check-once": "node run-once.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "playwright": "^1.47.0"
+  }
+}
