@@ -55,7 +55,7 @@ module.exports = {
   client: local.client || envClient || {
     name: "YOUR NAME",
     email: "you@example.com",
-    phone: "+3579XXXXXXX",
+    phone: "9XXXXXXX",
   },
 
   // Which single date the bot watches.

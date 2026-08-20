@@ -11,7 +11,7 @@ module.exports = {
   client: {
     name: "Your Full Name",
     email: "you@example.com",
-    phone: "+35799999999",
+    phone: "99999999",
   },
 
   // Optional: pin the exact date to watch, e.g. "2026-10-20".
