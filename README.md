@@ -10,8 +10,9 @@ first ran** (currently 61, see `config.js`) and then persisted. The
 bot does not shop around other dates — it keeps rechecking that single date,
 08:00–18:30 Nicosia time, every day, until a slot is successfully booked. No
 requests are made 00:00–08:00. Inside the active window it checks in bursts:
-every `burstIntervalSeconds` (20s) for `burstWindowMinutes` (2min) right after
-each clean 30-minute mark (:00 / :30), then goes quiet until the next mark.
+every `burstIntervalSeconds` (20s) in the `burstWindowMinutes` (2min) leading
+up to each clean 30-minute mark (:00 / :30), then goes quiet right after the
+mark until the next one's lead-in.
 
 ## ⚠️ Please read before running
 
@@ -97,10 +98,10 @@ match that in the code.
 npm start
 ```
 
-This runs an immediate check (if it's within the active window and burst
-period), then follows the schedule in `config.js`: active 08:00–18:30
-Asia/Nicosia, checking every 20s for 2 minutes after each clean :00/:30 mark,
-silent 00:00–08:00 and between marks. Leave this process running.
+This runs an immediate check (if it's within a pre-mark burst window), then
+follows the schedule in `config.js`: active 08:00–18:30 Asia/Nicosia,
+checking every 20s in the 2 minutes leading up to each clean :00/:30 mark,
+silent right after the mark, silent 00:00–08:00. Leave this process running.
 
 To keep it running in the background reliably (so it survives you closing
 the terminal, and restarts if your machine reboots), consider:
@@ -182,8 +183,8 @@ works well and keeps a persistent volume for `state.json`.
 - Watched date: a single fixed date — `targetDate` in `config.local.js` if set,
   otherwise `today + targetDaysAhead` (61) computed once on first run. The bot
   does **not** scan a range of dates or apply a weekday filter.
-- Check schedule: active 08:00–18:30 Asia/Nicosia, every 20s for 2min after
-  each clean 30-min mark (silent 00:00–08:00 and between marks)
+- Check schedule: active 08:00–18:30 Asia/Nicosia, every 20s in the 2min
+  leading up to each clean 30-min mark (silent 00:00–08:00 and between marks)
 - No separate email alert (relying on the booking system's own confirmation email)
 
 > ⚠️ Earlier versions of this project committed the client's name/email/phone

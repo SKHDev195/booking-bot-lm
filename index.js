@@ -6,16 +6,20 @@ const { log } = require("./lib/logger");
 const state = require("./lib/state");
 const { getTargetDate } = require("./lib/dates");
 
-// Fires every burstIntervalSeconds, but only during activeHourStart..activeHourEnd
-// (inclusive) — outside that range we don't want the process waking up at all.
-const tickCron = `*/${config.burstIntervalSeconds} * ${config.activeHourStart}-${config.activeHourEnd} * * *`;
+// Ticks every burstIntervalSeconds, all day — isInPreMarkBurstWindow() below
+// does the real filtering (blocked overnight hours + which marks are valid),
+// since the burst windows lead INTO each mark and so cross hour boundaries
+// (e.g. 08:58-08:59:59 leads into the 09:00 mark) in ways a cron hour-range
+// can't express cleanly on its own.
+const tickCron = `*/${config.burstIntervalSeconds} * * * * *`;
 const burstWindowSeconds = config.burstWindowMinutes * 60;
+const HALF_HOUR_SECONDS = 1800;
 
 log(
   `Scheduler starting. Active window: ${String(config.activeHourStart).padStart(2, "0")}:00-` +
     `${String(config.activeHourEnd).padStart(2, "0")}:30 (${config.timezone}), checking every ` +
-    `${config.burstIntervalSeconds}s for ${config.burstWindowMinutes}min after each clean 30-min ` +
-    `mark. Watching ${getTargetDate()}.`
+    `${config.burstIntervalSeconds}s in the ${config.burstWindowMinutes}min leading up to each ` +
+    `clean 30-min mark. Watching ${getTargetDate()}.`
 );
 
 /** Current {hour, minute, second} in the configured timezone. */
@@ -31,10 +35,23 @@ function nowParts() {
   return { hour: get("hour"), minute: get("minute"), second: get("second") };
 }
 
-/** True in the burstWindowMinutes right after each clean :00/:30 mark. */
-function isInBurstWindow({ minute, second }) {
-  const secondsSinceMark = (minute % 30) * 60 + second;
-  return secondsSinceMark < burstWindowSeconds;
+/**
+ * True in the burstWindowMinutes immediately BEFORE the next clean :00/:30
+ * mark — but only if that upcoming mark itself falls inside the active
+ * window (activeHourStart:00 exclusive, since its lead-in sits in the
+ * blocked overnight hours anyway, through activeHourEnd:30 inclusive).
+ */
+function isInPreMarkBurstWindow({ hour, minute, second }) {
+  const nowSeconds = hour * 3600 + minute * 60 + second;
+  const nextMarkSeconds = Math.ceil(nowSeconds / HALF_HOUR_SECONDS) * HALF_HOUR_SECONDS;
+  const timeUntilMark = nextMarkSeconds - nowSeconds;
+  if (timeUntilMark <= 0 || timeUntilMark > burstWindowSeconds) return false;
+
+  const markMinutesSinceMidnight = (nextMarkSeconds / 60) % (24 * 60);
+  return (
+    markMinutesSinceMidnight > config.activeHourStart * 60 &&
+    markMinutesSinceMidnight <= config.activeHourEnd * 60 + 30
+  );
 }
 
 let checking = false;
@@ -69,18 +86,13 @@ function runCheck() {
 }
 
 function onCronTick() {
-  const parts = nowParts();
-  if (isInBurstWindow(parts)) runCheck();
+  if (isInPreMarkBurstWindow(nowParts())) runCheck();
 }
 
-// Run once immediately on startup (only if we're inside the active window and
-// burst period — avoids a stray check right after a deploy at, say, 2am or
-// 14 minutes past a mark), then follow the cron schedule.
-{
-  const parts = nowParts();
-  const inActiveHours = parts.hour >= config.activeHourStart && parts.hour <= config.activeHourEnd;
-  if (inActiveHours && isInBurstWindow(parts)) runCheck();
-}
+// Run once immediately on startup, but only if we're already inside a
+// pre-mark burst window — avoids a stray check right after a deploy at,
+// say, 2am or in the middle of an idle 30-minute block.
+if (isInPreMarkBurstWindow(nowParts())) runCheck();
 
 cron.schedule(tickCron, onCronTick, { timezone: config.timezone });
 

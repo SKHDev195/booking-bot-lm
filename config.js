@@ -76,10 +76,10 @@ module.exports = {
   activeHourStart: 8,
   activeHourEnd: 18,
 
-  // After each clean 30-minute mark (:00 / :30) inside the active window,
-  // re-check every `burstIntervalSeconds` for `burstWindowMinutes` — a fresh
-  // slot is most likely to appear right at the mark, so this catches it fast
-  // without polling continuously for the whole 30 minutes.
+  // In the `burstWindowMinutes` immediately BEFORE each clean 30-minute mark
+  // (:00 / :30) inside the active window, re-check every
+  // `burstIntervalSeconds`. At the mark itself and for the rest of the
+  // 30-minute block, it goes quiet again until the next mark's lead-in.
   burstIntervalSeconds: 20,
   burstWindowMinutes: 2,
 
