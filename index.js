@@ -18,8 +18,8 @@ const HALF_HOUR_SECONDS = 1800;
 log(
   `Scheduler starting. Active window: ${String(config.activeHourStart).padStart(2, "0")}:00-` +
     `${String(config.activeHourEnd).padStart(2, "0")}:30 (${config.timezone}), checking every ` +
-    `${config.burstIntervalSeconds}s in the ${config.burstWindowMinutes}min leading up to each ` +
-    `clean 30-min mark. Watching ${getTargetDate()}.`
+    `${config.burstIntervalSeconds}s from ${config.burstWindowMinutes}min before to ` +
+    `${config.burstWindowMinutes}min after each clean 30-min mark. Watching ${getTargetDate()}.`
 );
 
 /** Current {hour, minute, second} in the configured timezone. */
@@ -35,23 +35,39 @@ function nowParts() {
   return { hour: get("hour"), minute: get("minute"), second: get("second") };
 }
 
-/**
- * True in the burstWindowMinutes immediately BEFORE the next clean :00/:30
- * mark — but only if that upcoming mark itself falls inside the active
- * window (activeHourStart:00 exclusive, since its lead-in sits in the
- * blocked overnight hours anyway, through activeHourEnd:30 inclusive).
- */
-function isInPreMarkBurstWindow({ hour, minute, second }) {
-  const nowSeconds = hour * 3600 + minute * 60 + second;
-  const nextMarkSeconds = Math.ceil(nowSeconds / HALF_HOUR_SECONDS) * HALF_HOUR_SECONDS;
-  const timeUntilMark = nextMarkSeconds - nowSeconds;
-  if (timeUntilMark <= 0 || timeUntilMark > burstWindowSeconds) return false;
+// Valid marks run from activeHourStart:00 through activeHourEnd:30 inclusive.
+const FIRST_MARK_MINUTES = config.activeHourStart * 60;
+const LAST_MARK_MINUTES = config.activeHourEnd * 60 + 30;
 
-  const markMinutesSinceMidnight = (nextMarkSeconds / 60) % (24 * 60);
-  return (
-    markMinutesSinceMidnight > config.activeHourStart * 60 &&
-    markMinutesSinceMidnight <= config.activeHourEnd * 60 + 30
-  );
+/**
+ * True in the burstWindowMinutes on EITHER side of the nearest clean
+ * :00/:30 mark — but only the sides that don't leak into blocked time:
+ * the lead-in to the very first mark of the day is excluded (it would sit
+ * in the blocked 00:00-activeHourStart hours), and the lead-in to the mark
+ * just past the last one is excluded (that mark doesn't exist). The
+ * trailing side of the last mark itself is fine and included.
+ */
+function isInBurstWindow({ hour, minute, second }) {
+  const nowSeconds = hour * 3600 + minute * 60 + second;
+  const blockStartSeconds = Math.floor(nowSeconds / HALF_HOUR_SECONDS) * HALF_HOUR_SECONDS;
+  const blockEndSeconds = blockStartSeconds + HALF_HOUR_SECONDS;
+
+  const afterDist = nowSeconds - blockStartSeconds; // 0..1799, since the last mark
+  const beforeDist = blockEndSeconds - nowSeconds; // 1..1800, since the next mark
+
+  const blockStartMinutes = (blockStartSeconds / 60) % (24 * 60);
+  const blockEndMinutes = (blockEndSeconds / 60) % (24 * 60);
+
+  const afterOk =
+    afterDist < burstWindowSeconds &&
+    blockStartMinutes >= FIRST_MARK_MINUTES &&
+    blockStartMinutes <= LAST_MARK_MINUTES;
+  const beforeOk =
+    beforeDist <= burstWindowSeconds &&
+    blockEndMinutes > FIRST_MARK_MINUTES &&
+    blockEndMinutes <= LAST_MARK_MINUTES;
+
+  return afterOk || beforeOk;
 }
 
 let checking = false;
@@ -86,13 +102,13 @@ function runCheck() {
 }
 
 function onCronTick() {
-  if (isInPreMarkBurstWindow(nowParts())) runCheck();
+  if (isInBurstWindow(nowParts())) runCheck();
 }
 
 // Run once immediately on startup, but only if we're already inside a
 // pre-mark burst window — avoids a stray check right after a deploy at,
 // say, 2am or in the middle of an idle 30-minute block.
-if (isInPreMarkBurstWindow(nowParts())) runCheck();
+if (isInBurstWindow(nowParts())) runCheck();
 
 cron.schedule(tickCron, onCronTick, { timezone: config.timezone });
 
