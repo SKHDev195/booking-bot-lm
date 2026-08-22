@@ -56,6 +56,11 @@ async function runOnce() {
   const browser = await chromium.launch({
     headless: FORCE_HEADED ? false : config.browser.headless,
     slowMo: config.browser.slowMoMs,
+    // Some container sandboxes (seen on Railway) kill Chromium with SIGTRAP
+    // the instant it launches, before Playwright's defaults (--no-sandbox
+    // etc.) even get a usable browser back. --no-zygote/--single-process
+    // avoid the multi-process startup path that trips this.
+    args: ["--no-zygote", "--single-process", "--disable-gpu"],
   });
   const context = await browser.newContext();
   const page = await context.newPage();
