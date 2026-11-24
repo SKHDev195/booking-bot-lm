@@ -68,7 +68,7 @@ module.exports = {
   // that computed value recompute against a new "today", so pin `targetDate`
   // in config.local.js if you want a stable date.
   targetDate: local.targetDate || process.env.TARGET_DATE || null,
-  targetDaysAhead: 61,
+  targetDaysAhead: 91,
 
   // Active window: no requests at all outside these hours (Nicosia time).
   // activeHourEnd is inclusive and paired with a :30 mark, so the last burst

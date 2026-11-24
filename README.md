@@ -6,7 +6,7 @@ Watches this SimplyBook.it booking widget:
 and automatically books **the first available slot on one fixed date**. That
 date is either pinned explicitly (`targetDate` in `config.local.js`) or, if
 left unset, computed once as **`targetDaysAhead` days ahead of when the bot
-first ran** (currently 61, see `config.js`) and then persisted. The
+first ran** (currently 91, see `config.js`) and then persisted. The
 bot does not shop around other dates — it keeps rechecking that single date,
 08:00–18:30 Nicosia time, every day, until a slot is successfully booked. No
 requests are made 00:00–08:00. Inside the active window it checks in bursts:
@@ -181,7 +181,7 @@ works well and keeps a persistent volume for `state.json`.
 - Client: set in `config.local.js` (kept out of version control)
 - Service/provider: service `8`, provider `10`, party count `1`
 - Watched date: a single fixed date — `targetDate` in `config.local.js` if set,
-  otherwise `today + targetDaysAhead` (61) computed once on first run. The bot
+  otherwise `today + targetDaysAhead` (91) computed once on first run. The bot
   does **not** scan a range of dates or apply a weekday filter.
 - Check schedule: active 08:00–18:30 Asia/Nicosia, every 20s from 2min before
   to 2min after each clean 30-min mark (silent 00:00–08:00 and between marks)
