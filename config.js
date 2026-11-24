@@ -60,15 +60,13 @@ module.exports = {
 
   // Which single date the bot watches.
   //
-  // If config.local.js sets an explicit `targetDate` (YYYY-MM-DD), that exact
-  // date is used, deterministically — it survives deleting state.json.
+  // If config.local.js sets an explicit `targetDate` (YYYY-MM-DD), or the
+  // TARGET_DATE env var is set, that exact date is used and stays fixed.
   //
-  // Otherwise the bot computes `today + targetDaysAhead` ONCE on first run and
-  // persists it in stateFile (as targetDate). Note: deleting state.json makes
-  // that computed value recompute against a new "today", so pin `targetDate`
-  // in config.local.js if you want a stable date.
+  // Otherwise the date rolls: every run watches `today + targetDaysAhead`
+  // (today in `timezone`), so it moves forward one day each day.
   targetDate: local.targetDate || process.env.TARGET_DATE || null,
-  targetDaysAhead: 91,
+  targetDaysAhead: 92,
 
   // Active window: no requests at all outside these hours (Nicosia time).
   // activeHourEnd is inclusive and paired with a :30 mark, so the last burst

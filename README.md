@@ -3,11 +3,11 @@
 Watches this SimplyBook.it booking widget:
 `https://limassoldistrictadmin.simplybook.it/v2/#book/service/8/count/1/provider/10/date/.../`
 
-and automatically books **the first available slot on one fixed date**. That
-date is either pinned explicitly (`targetDate` in `config.local.js`) or, if
-left unset, computed once as **`targetDaysAhead` days ahead of when the bot
-first ran** (currently 91, see `config.js`) and then persisted. The
-bot does not shop around other dates — it keeps rechecking that single date,
+and automatically books **the first available slot on the watched date**.
+That date is either pinned explicitly (`targetDate` in `config.local.js` or
+the `TARGET_DATE` env var) or, if left unset, **rolls forward daily: each run
+watches today + `targetDaysAhead` days** (currently 92, see `config.js`), so
+the date moves on by one day each day. Each run checks only that one date,
 08:00–18:30 Nicosia time, every day, until a slot is successfully booked. No
 requests are made 00:00–08:00. Inside the active window it checks in bursts:
 every `burstIntervalSeconds` (20s) from `burstWindowMinutes` (2min) before to
@@ -62,10 +62,9 @@ values in `config.js` are intentionally invalid.
 This opens a real, visible Chrome window so you can see exactly what the
 bot sees and does. It will check the single configured target date, and
 **will actually attempt a real booking if it finds an open slot** — so
-only do this if you're genuinely ready to book, or temporarily change
-`targetDaysAhead` in `config.js` (and clear `targetDate` from `state.json`
-if one was already saved) to a date you know is full, just to watch the
-"no slots found" path safely.
+only do this if you're genuinely ready to book, or temporarily pin
+`targetDate` in `config.local.js` to a date you know is full, just to watch
+the "no slots found" path safely.
 
 ```bash
 npm run test-once
@@ -149,12 +148,12 @@ works well and keeps a persistent volume for `state.json`.
    instead:
    - `CLIENT_NAME`, `CLIENT_EMAIL`, `CLIENT_PHONE` — your real details.
    - `TARGET_DATE` — optional, `YYYY-MM-DD` to pin the watched date; leave
-     unset to use `targetDaysAhead` (computed once, then persisted).
+     unset so the date rolls forward daily (today + `targetDaysAhead`).
 3. **Attach a Volume** (Settings → Volumes → New Volume, mount path e.g.
    `/data`). Railway sets `RAILWAY_VOLUME_MOUNT_PATH` automatically, and
    `config.js` uses it for `state.json` / `bot.log` / `screenshots/` so they
    survive redeploys. Without a volume, those reset on every deploy — you'd
-   lose the "already booked" / pinned `targetDate` state.
+   lose the "already booked" state.
 4. **Deploy.** Check the Railway service logs — you should see the same
    startup lines as `npm start` locally. First deploy takes a few minutes
    longer since `npx playwright install --with-deps chromium` downloads the
@@ -180,9 +179,9 @@ works well and keeps a persistent volume for `state.json`.
 
 - Client: set in `config.local.js` (kept out of version control)
 - Service/provider: service `8`, provider `10`, party count `1`
-- Watched date: a single fixed date — `targetDate` in `config.local.js` if set,
-  otherwise `today + targetDaysAhead` (91) computed once on first run. The bot
-  does **not** scan a range of dates or apply a weekday filter.
+- Watched date: `targetDate` in `config.local.js` / `TARGET_DATE` if set (fixed),
+  otherwise `today + targetDaysAhead` (92), recomputed every run so it rolls
+  forward daily. Each run checks one date; no range scan or weekday filter.
 - Check schedule: active 08:00–18:30 Asia/Nicosia, every 20s from 2min before
   to 2min after each clean 30-min mark (silent 00:00–08:00 and between marks)
 - No separate email alert (relying on the booking system's own confirmation email)

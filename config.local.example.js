@@ -15,7 +15,7 @@ module.exports = {
   },
 
   // Optional: pin the exact date to watch, e.g. "2026-10-20".
-  // If set, it is used verbatim and survives deleting state.json.
-  // Leave as null to use config.targetDaysAhead (today + N days, computed once).
+  // If set, it is used verbatim and never moves.
+  // Leave as null to roll: each run watches today + config.targetDaysAhead.
   targetDate: null,
 };

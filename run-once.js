@@ -41,15 +41,13 @@ async function runOnce() {
   if (isPastDate(dateStr)) {
     const msg =
       `STOPPING: the watched date ${dateStr} is in the past and can never be booked. ` +
-      `Set a future targetDate in config.local.js (or delete ${config.stateFile} to ` +
-      `recompute from targetDaysAhead), then restart.`;
+      `Set a future TARGET_DATE / targetDate in config.local.js, or unset it so the ` +
+      `date rolls forward from targetDaysAhead, then restart.`;
     log(msg);
     state.save({ ...current, lastRunAt: new Date().toISOString(), lastError: msg });
     return;
   }
-  // Reload state: getTargetDate() may have just persisted a new targetDate,
-  // and `current` (loaded above) would otherwise be stale and overwrite it
-  // on every state.save() below.
+  // Reload state so `current` is fresh before the state.save() calls below.
   Object.assign(current, state.load());
   log(`Starting run. Watching a single fixed date: ${dateStr}.`);
 
